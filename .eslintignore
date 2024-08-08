@@ -1,0 +1,9 @@
+# js files
+/*.js
+
+# output folders
+/node_modules
+/dist
+
+# tests
+/coverage
