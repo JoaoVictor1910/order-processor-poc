@@ -71,3 +71,111 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](LICENSE).
+
+```
+const { postInAnalytics } = require('./caminho/para/seu/arquivo');
+const Logit = require('../helpers/logger.helper');
+const { invokeEvent } = require('../helpers/lambda.helper');
+
+jest.mock('../helpers/logger.helper');
+jest.mock('../helpers/lambda.helper');
+
+describe('Analytics Service', () => {
+  const mockSession = {
+    humanSession: {
+      contexto: {
+        id_sessao: '12345',
+        message: {
+          conteudo_interacao: {
+            contexto: 'context_data',
+            text: 'message_text'
+          },
+          dados_sessao: 'dados_sessao_data',
+          id_correlacao: 'correlation_id',
+        },
+        central: 'central_data'
+      }
+    },
+    contexto: {
+      id_sessao: '54321',
+      message: {
+        conteudo_interacao: {
+          contexto: 'context_data'
+        },
+        dados_sessao: 'dados_sessao_data',
+        id_correlacao: 'correlation_id',
+      }
+    }
+  };
+
+  const mockMessage = {
+    id_cliente: 'cliente_123',
+    id_tenant: 'tenant_123',
+    id_contato: 'contato_123',
+    tenant_name: 'Tenant Name',
+    contact_name: 'Contact Name',
+    id_mensagem: 'message_id',
+    whatsappStatus: 'status',
+    destinatario: 'customer',
+    nome_remetente: 'Assistente Virtual Itaú',
+    texto: 'mensagem de texto',
+    data_mensagem: '2024-08-25T12:00:00Z',
+  };
+
+  const safeData = { /* Dados seguros que podem ser passados para o teste */ };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should prepare analytics payload and invoke event', async () => {
+    invokeEvent.mockResolvedValue('Lambda invoked');
+
+    const result = await postInAnalytics(mockMessage, mockSession, safeData);
+
+    expect(result).toBe('Message sent');
+    expect(invokeEvent).toHaveBeenCalledWith('whatsapp-analytics', expect.any(Object));
+    expect(Logit.debug).toHaveBeenCalledTimes(2);
+    expect(Logit.debug).toHaveBeenCalledWith(
+      'calling analytics lambda function...',
+      expect.any(Object)
+    );
+  });
+
+  it('should handle errors when invoking analytics event', async () => {
+    const errorMessage = 'Something went wrong';
+    invokeEvent.mockRejectedValue(new Error(errorMessage));
+
+    await expect(postInAnalytics(mockMessage, mockSession, safeData)).rejects.toThrow(
+      `Could not post message to analytics: ${JSON.stringify(new Error(errorMessage))}`
+    );
+
+    expect(Logit.error).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('should handle human session correctly', async () => {
+    const humanSession = {
+      humanSession: {
+        contexto: {
+          id_sessao: '12345',
+          message: {
+            conteudo_interacao: {
+              contexto: 'context_data',
+              text: 'message_text',
+            },
+            id_correlacao: 'correlation_id',
+          },
+        },
+      },
+    };
+
+    invokeEvent.mockResolvedValue('Lambda invoked');
+
+    const result = await postInAnalytics(mockMessage, humanSession, safeData);
+
+    expect(result).toBe('Message sent');
+    expect(invokeEvent).toHaveBeenCalledWith('whatsapp-analytics', expect.any(Object));
+  });
+});
+```
+
